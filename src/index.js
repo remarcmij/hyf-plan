@@ -6,7 +6,6 @@ const util = require('util');
 const yaml = require('js-yaml');
 const inquirer = require('inquirer');
 const moment = require('moment');
-const _ = require('lodash');
 const glob = util.promisify(require('glob'));
 
 const fsReadFile = util.promisify(fs.readFile);
