@@ -12,13 +12,19 @@ const fsReadFile = util.promisify(fs.readFile);
 
 const DATA_PATH = path.join(__dirname, '../data');
 
-const TO_BE_ANNOUNCED = 'To be announced';
-
 const dmyMoment = dateString => moment(dateString, 'DD-MM-YYYY');
 
 async function loadYaml(folderName, filename) {
   const data = await fsReadFile(path.join(DATA_PATH, folderName, `${filename}.yml`), 'utf8');
   return yaml.safeLoad(data);
+}
+
+async function tryLoadYaml(folderName, fileName) {
+  try {
+    return await loadYaml(folderName, fileName);
+  } catch (_) {
+    return {};
+  }
 }
 
 async function getPlanChoices() {
@@ -54,6 +60,15 @@ function replaceText(text, keyValuePairs) {
   }, text);
 }
 
+function mergeTemplates(mainConfig, moduleConfig, classConfig, planConfig) {
+  return [mainConfig, moduleConfig, classConfig, planConfig].reduce((prev, { templates }) => {
+    if (templates) {
+      prev = { ...prev, ...templates };
+    }
+    return prev;
+  }, {});
+}
+
 (async () => {
   try {
     let planName;
@@ -72,35 +87,37 @@ function replaceText(text, keyValuePairs) {
       planName = process.argv[2];
     }
 
-    const modulePlan = await loadYaml('plans', planName);
     const [className, moduleName] = planName.split('.');
-    const classInfo = await loadYaml('classes', className);
-    const config = await loadYaml('config', 'config');
 
-    const teachers = modulePlan.teachers
-      ? modulePlan.teachers
-          .map(teacher => replaceText(config.templates.teacher, { teacher }))
-          .join('\n')
-      : TO_BE_ANNOUNCED;
+    const mainConfig = await loadYaml('config', 'config');
+    const moduleConfig = await tryLoadYaml('modules', moduleName);
+    const classConfig = await loadYaml('classes', className);
+    const planConfig = await loadYaml('plans', planName);
 
-    const students = classInfo.students
-      .map(student => replaceText(config.templates.student, { student }))
-      .join('\n');
+    const templates = mergeTemplates(mainConfig, moduleConfig, classConfig, planConfig);
+
+    const teachers = planConfig.teachers
+      ? planConfig.teachers.map(teacher => replaceText(templates.teacher, { teacher })).join('\n')
+      : '';
+
+    const students = classConfig.students
+      ? classConfig.students.map(student => replaceText(templates.student, { student })).join('\n')
+      : '';
 
     const header =
       '## ' +
-      replaceText(config.templates.header, {
-        className: classInfo.name,
-        moduleName: config.modules[moduleName],
+      replaceText(templates.header, {
+        className: classConfig.name,
+        moduleName: mainConfig.modules[moduleName],
         teachers,
       });
 
-    const body = modulePlan.lectureDates
+    const body = planConfig.lectureDates
       .map(
         (lectureDate, index) =>
           '\n### ' +
           replaceText(
-            config.templates.week,
+            templates.week,
             {
               weekNum: index + 1,
               lectureDate,
@@ -111,7 +128,7 @@ function replaceText(text, keyValuePairs) {
       )
       .join('\n');
 
-    const output = header + body + '\n' + config.templates.footer;
+    const output = header + body + '\n' + (templates.footer || '');
 
     const outputFilename = `${planName}.issue.md`;
     fs.writeFileSync(outputFilename, output);
