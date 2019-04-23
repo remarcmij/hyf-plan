@@ -14,7 +14,7 @@ templates:
   header: | 
     {{className}} - {{moduleName}}
 
-    - Teachers(s):
+    - [ ] Teachers assigned
     {{teachers}}
   week: |
     Week {{weekNum}} - {{lectureDate}}

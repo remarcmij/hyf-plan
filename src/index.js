@@ -88,7 +88,7 @@ function replaceText(text, keyValuePairs) {
       .join('\n');
 
     const header =
-      '# ' +
+      '## ' +
       replaceText(config.templates.header, {
         className: classInfo.name,
         moduleName: config.modules[moduleName],
@@ -111,7 +111,7 @@ function replaceText(text, keyValuePairs) {
       )
       .join('\n');
 
-    const output = header + body + '\n' + config.footer;
+    const output = header + body + '\n' + config.templates.footer;
 
     const outputFilename = `${planName}.issue.md`;
     fs.writeFileSync(outputFilename, output);
