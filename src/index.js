@@ -12,43 +12,14 @@ const glob = util.promisify(require('glob'));
 const fsReadFile = util.promisify(fs.readFile);
 
 const DATA_PATH = path.join(__dirname, '../data');
+
 const TO_BE_ANNOUNCED = 'To be announced';
 
 const dmyMoment = dateString => moment(dateString, 'DD-MM-YYYY');
 
-function loadPlan(planName) {
-  const data = fs.readFileSync(path.join(DATA_PATH, 'plans', `${planName}.yml`), 'utf8');
+async function loadYaml(folderName, filename) {
+  const data = await fsReadFile(path.join(DATA_PATH, folderName, `${filename}.yml`), 'utf8');
   return yaml.safeLoad(data);
-}
-
-function loadClass(className) {
-  const data = fs.readFileSync(path.join(DATA_PATH, 'classes', `${className}.yml`), 'utf8');
-  return yaml.safeLoad(data);
-}
-
-function loadTemplate(templateName) {
-  return fs.readFileSync(path.join(DATA_PATH, 'templates', `${templateName}.md`), 'utf8');
-}
-
-function formatLectureDates(modulePlan) {
-  const { lectureDates } = modulePlan;
-  return lectureDates.reduce((obj, date, index) => {
-    obj[`dateWeek${index + 1}`] = date;
-    return obj;
-  }, {});
-}
-
-function formatTeachers(modulePlan) {
-  const { teachers } = modulePlan;
-  if (!teachers || teachers.length === 0) {
-    return `  - ${TO_BE_ANNOUNCED}`;
-  }
-  return modulePlan.teachers.map(teacher => `  - [ ] $${teacher}`).join('\n');
-}
-
-function formatStudents(classInfo) {
-  const { students } = classInfo;
-  return students.map(student => `    - [ ] $${student}`).join('\n');
 }
 
 async function getPlanChoices() {
@@ -77,6 +48,13 @@ async function getPlanChoices() {
   );
 }
 
+function replaceText(text, keyValuePairs) {
+  return Object.entries(keyValuePairs).reduce((prev, [name, value]) => {
+    const pattern = new RegExp(`{{${name}}}`, 'g');
+    return prev.replace(pattern, value);
+  }, text);
+}
+
 (async () => {
   try {
     let planName;
@@ -95,22 +73,46 @@ async function getPlanChoices() {
       planName = process.argv[2];
     }
 
-    const modulePlan = loadPlan(planName);
-    const [className, templateName] = planName.split('.');
-    const classInfo = loadClass(className);
-    const template = loadTemplate(templateName);
-    const compiled = _.template(template);
+    const modulePlan = await loadYaml('plans', planName);
+    const [className, moduleName] = planName.split('.');
+    const classInfo = await loadYaml('classes', className);
+    const config = await loadYaml('config', 'config');
 
-    const lectureDates = formatLectureDates(modulePlan);
-    const teachers = formatTeachers(modulePlan);
-    const students = formatStudents(classInfo);
+    const teachers = modulePlan.teachers
+      ? modulePlan.teachers
+          .map(teacher => replaceText(config.templates.teacher, { teacher }))
+          .join('\n')
+      : TO_BE_ANNOUNCED;
 
-    const output = compiled({
-      className: classInfo.name,
-      teachers,
-      students,
-      ...lectureDates,
-    });
+    const students = classInfo.students
+      .map(student => replaceText(config.templates.student, { student }))
+      .join('\n');
+
+    const header =
+      '# ' +
+      replaceText(config.templates.header, {
+        className: classInfo.name,
+        moduleName: config.modules[moduleName],
+        teachers,
+      });
+
+    const body = modulePlan.lectureDates
+      .map(
+        (lectureDate, index) =>
+          '\n### ' +
+          replaceText(
+            config.templates.week,
+            {
+              weekNum: index + 1,
+              lectureDate,
+              students,
+            },
+            ''
+          )
+      )
+      .join('\n');
+
+    const output = header + body + '\n' + config.footer;
 
     const outputFilename = `${planName}.issue.md`;
     fs.writeFileSync(outputFilename, output);
