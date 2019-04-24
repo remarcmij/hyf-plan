@@ -1,0 +1,23 @@
+student: "  - [ ] @{{student}}"
+teacher: "  - [ ] @{{teacher}}"
+preamble: ""
+header: |
+
+  ## {{className}} - {{moduleName}}
+  {{preamble}}
+
+  #### Teachers
+  - [ ] Teachers assigned
+  {{teachers}}
+week: |
+  
+  #### Week {{weekNum}} - {{lectureDate}}
+
+  - [ ] Lecture delivered
+  - [ ] Recordings uploaded
+  - [ ] Homework reviewed
+  {{students}}
+
+  - [ ] Homework corrected (if needed)
+  {{students}}
+footer: ""

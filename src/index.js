@@ -14,17 +14,9 @@ const DATA_PATH = path.join(__dirname, '../data');
 
 const dmyMoment = dateString => moment(dateString, 'DD-MM-YYYY');
 
-async function loadYaml(folderName, filename) {
+async function loadYaml(filename, folderName = '') {
   const data = await fsReadFile(path.join(DATA_PATH, folderName, `${filename}.yml`), 'utf8');
   return yaml.safeLoad(data);
-}
-
-async function tryLoadYaml(folderName, fileName) {
-  try {
-    return await loadYaml(folderName, fileName);
-  } catch (_) {
-    return {};
-  }
 }
 
 async function getPlanChoices() {
@@ -60,8 +52,8 @@ function replaceText(text, keyValuePairs) {
   }, text);
 }
 
-function mergeTemplates(mainConfig, moduleConfig, classConfig, planConfig) {
-  return [mainConfig, moduleConfig, classConfig, planConfig].reduce((prev, { templates }) => {
+function mergeTemplates(masterTemplates, moduleConfig, classConfig, planConfig) {
+  return [masterTemplates, moduleConfig, classConfig, planConfig].reduce((prev, { templates }) => {
     if (templates) {
       prev = { ...prev, ...templates };
     }
@@ -89,12 +81,17 @@ function mergeTemplates(mainConfig, moduleConfig, classConfig, planConfig) {
 
     const [className, moduleName] = planName.split('.');
 
-    const mainConfig = await loadYaml('config', 'config');
-    const moduleConfig = await tryLoadYaml('modules', moduleName);
-    const classConfig = await loadYaml('classes', className);
-    const planConfig = await loadYaml('plans', planName);
+    const templatesConfig = await loadYaml('templates');
+    const moduleConfig = await loadYaml(moduleName, 'modules');
+    const classConfig = await loadYaml(className, 'classes');
+    const planConfig = await loadYaml(planName, 'plans');
 
-    const templates = mergeTemplates(mainConfig, moduleConfig, classConfig, planConfig);
+    const templates = mergeTemplates(
+      { templates: templatesConfig },
+      moduleConfig,
+      classConfig,
+      planConfig
+    );
 
     const teachers = planConfig.teachers
       ? planConfig.teachers.map(teacher => replaceText(templates.teacher, { teacher })).join('\n')
@@ -104,27 +101,24 @@ function mergeTemplates(mainConfig, moduleConfig, classConfig, planConfig) {
       ? classConfig.students.map(student => replaceText(templates.student, { student })).join('\n')
       : '';
 
-    const header =
-      '## ' +
-      replaceText(templates.header, {
-        className: classConfig.name,
-        moduleName: mainConfig.modules[moduleName],
-        teachers,
-      });
+    const header = replaceText(templates.header, {
+      preamble: templates.preamble || '',
+      className: classConfig.name,
+      moduleName: moduleConfig.name,
+      teachers,
+    });
 
     const body = planConfig.lectureDates
-      .map(
-        (lectureDate, index) =>
-          '\n### ' +
-          replaceText(
-            templates.week,
-            {
-              weekNum: index + 1,
-              lectureDate,
-              students,
-            },
-            ''
-          )
+      .map((lectureDate, index) =>
+        replaceText(
+          templates.week,
+          {
+            weekNum: index + 1,
+            lectureDate,
+            students,
+          },
+          ''
+        )
       )
       .join('\n');
 
