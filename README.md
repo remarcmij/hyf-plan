@@ -63,6 +63,6 @@ We can use a GitHub **issue** in combination with a **milestone**. As there is a
 2. Create a new **milestone** and set an appropriate title, e.g. **Class 20** and set the due date to the date of the last lecture + 1 week (to allow for homework).
 3. Create a new GitHub **issue** and copy and paste the content of the generated markdown file.
 4. Associate the **issue** with the **milestone** created previously.
-5. Pin the *issue* (unpin an older issue if needed).
+5. Pin the **issue** (unpin an older issue if needed).
 
 Example: https://github.com/HackYourFuture/Node.js/milestones
