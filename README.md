@@ -54,3 +54,15 @@ The default templates may be overridden in the `<module>.yml`, `<class>.yml` and
 When the application is started without command line parameters a list of 'plans' (i.e. available YAML files from the `data/plans` folder is shown from which a plan can be selected. Only plans for which the first lecture date lies in the future are shown.
 
 After selection of a plan the application generates a markdown file, the contents of which can be used as a (i.e. to paste into) GitHub issue.
+
+## Suggested GitHub Usage
+
+We can use a GitHub **issue** in combination with a **milestone**. As there is a separate menu option in GitHub to find **milestones** we can easily get an overview of all milestones, their status and their associated issues.
+
+1. Go to the GitHub repository for the target HYF module, e.g., **Node.js**.
+2. Create a new **milestone** and set an appropriate title, e.g. **Class 20** and set the due date to the date of the last lecture + 1 week (to allow for homework).
+3. Create a new GitHub **issue** and copy and paste the content of the generated markdown file.
+4. Associate the **issue** with the **milestone** created previously.
+5. Pin the *issue* (unpin an older issue if needed).
+
+Example: https://github.com/HackYourFuture/Node.js/milestones
